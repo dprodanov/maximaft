@@ -1,0 +1,342 @@
+/*
+ * (C) Dimiter Prodanov
+ *
+ * @version 0.6 Date 27 Feb 2014
+ *
+ * @author Dimiter Prodanov
+ * 		  IMEC
+
+ * @contents
+ * This library computes Fourier and Fresnel transforms
+ * 
+ * 
+ * @license This library is free software; you can redistribute it and/or
+ *      modify it under the terms of the GNU Lesser General Public
+ *      License as published by the Free Software Foundation; either
+ *      version 2.1 of the License, or (at your option) any later version.
+ *
+ *      This library is distributed in the hope that it will be useful,
+ *      but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *       Lesser General Public License for more details.
+ *
+ *      You should have received a copy of the GNU Lesser General Public
+ *      License along with this library; if not, write to the Free Software
+ *      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+fourinfo([_package]):=
+block(
+	disp("package name: fourrier.mac (c)"),
+	disp("author: Dimiter Prodanov"),
+	disp("revision: 1.0"),
+	disp("Recommended location: share/contrib"),
+	disp("last update: Mar, 2014"),
+	disp("")
+)$
+
+declare (FT, linear)$
+declare (IFT, linear)$
+
+( "transitive rules",
+matchdeclare(seq, opEqp),
+    defrule(fttrans, FT(seq),  FT(part(seq,1)) = FT (part(seq,2))),
+    defrule(ifttrans, IFT(seq), IFT(part(seq,1)) = IFT(part(seq,2)))
+)$
+
+( "Basic FT IFT  rules",
+matchdeclare(t, true, f, true, x, true),
+    defrule(ft_ift, FT(IFT(t)), t),
+    defrule(ift_ft, IFT(FT(t)), t),
+    defrule(ftc, FT(1), delta(f)),
+    defrule(iftc, IFT(1), delta(t)),
+    defrule(ft_main, FT(x), integrate(x*exp(-%i*2*%pi*f*t),t,-inf, inf )),
+    defrule(ift_main, IFT(x), integrate(x*exp( %i*2*%pi*f*t),f,-inf, inf ))
+)$
+
+( "special functions",
+matchdeclare([t, f], lambda([u], not(constantp(u))), [t0,  f0 ], constantp, T, atom, a, lambda([u], freeof(t,a) ) ),
+    /* **   special functions
+        */
+    defrule(ft_delta, FT(delta(t)), 1),
+    defrule(ft_delta1, FT(delta(t - t0)), exp(- 2*%pi*f*t0)),
+    defrule(ift_delta, IFT(delta(f)), 1),
+    defrule(ift_delta1, IFT(delta(f - f0)), exp( 2*%pi*f0*t)),
+    defrule(ft_t, FT(t), -2* %pi* 1/(f^2) ), 
+    defrule(ift_t,  IFT(1/(f^2)), -t/(2* %pi) ), 
+    defrule(ft_rect, FT(_rect(t, T)), 1/abs(T)*'sinc(f,1/T)),
+    defrule(ift_rect, IFT(_rect(f, T)), 1/abs(T)*'sinc(t,1/T)),
+    defrule(ft_triang, FT(_triang(t, T)), 1/abs(T)*('sinc(f,1/T))^2),
+    defrule(ift_triang, IFT(_triang(f, T)), 1/abs(T)*('sinc(t,1/T))^2),
+    defrule(ft_step, FT(_step(t)), 1/(2*%i*%pi*f) +delta(f)),
+    defrule(ft_signum, FT(signum(t)), 1/(2*%i *%pi*f) ),
+    defrule(ift_signum, IFT (1/f), 2*%i * %pi*signum(t) ),
+   
+    defrule(ft_sinc, FT(_sinc(t,T)), 1/abs(T) *'rect(f,1/T)),
+    defrule(ift_sinc, IFT(_sinc(f,T)), 1/abs(T) *'rect(t,1/T)),
+    defrule(ft_sinc2, FT(_sinc(t,T)^2), 1/abs(T) *'triang(f, 1/T)),
+    
+    defrule(ft_sin, FT(sin(t)), 1/(2*%i)*(delta(f - 1/(2*%pi)) -  delta(f + 1/(2*%pi))) ),
+    defrule(ft_sin2, FT(sin(t^2)), -sqrt(%pi) *sin(%pi^2 *f^2 -%pi/4 ) ),
+    defrule(ft_cos, FT(cos(t)), 1/(2)*(delta(f - 1/(2*%pi)) +  delta(f + 1/(2*%pi))) ),
+    defrule(ft_cos2, FT(cos(t^2)), sqrt(%pi) *cos(%pi^2 *f^2 -%pi/4 ) )
+)$
+
+( "differentiation and integration",
+matchdeclare([t, f, axt], lambda([u], not(constantp(u))), g, true, n, atom, a, atom, F, true),
+    defrule(ft_diff1, FT('diff(g(t), t,n)),  (%i*2*%pi*f)^n *FT(g(t)) ),
+    defrule(ft_diff2, FT(axt), lambda([axt], ftPow(axt) )   ),
+    "defrule(ft_scale, FT(F(axt)), ftScale(axt, F)  )"
+)$
+
+
+("imaginary arguments",
+ matchdeclare([ it ], lambda([u], is(splitBy1(u,%i)#false) ) ),
+ defrule(ft_ie, FT(exp(it)), delta(f - 1/(2*%pi) )   )
+)$
+
+/*
+
+("imaginary arguments",
+ matchdeclare([ it ], lambda([u], splitByN(u, %i)#false ) ),
+ defrule(ft_ie2, FT(exp(it)), lambda([u], u:splitByN(u, %i), 1/abs(u) *delta(f - 1/u /(2*%pi) ))   )
+)$
+
+ftScale(axt,F):= block([a, ret], 
+  a: splitBy1(axt, t), 
+  ret:1/abs(a)* FT(F(t/a) ),
+  return(ret) 
+)$ 
+*/
+
+ftPow(axt):= block([g,s,n], 
+   s:inargsa(axt),    
+   g:s[2],  
+   s:inargsa(s[1]),     
+   n:s[2],
+   splitByPow(axt, t), 
+   return (1/(-%i*2*%pi)^n *'diff(FT(g),f,n)  ) 
+)$
+
+splitByPow(V, t) := block( [ret,  %A:false, %N:0],
+   matchdeclare(%A, nlistp , t, atom, %N,  nlistp),
+   defmatch (powp,  %A*t^%N, t),
+   powp(V,t),  
+   "print (%A, %N)",
+   ret: [ %A, %N],
+   return(ret)
+)$
+
+nlistp(_x):=  not(listp(_x))$
+/*
+splitBy2(V, t, n):= block([A:V],
+    matchdeclare(A, true , t, any ),
+    defmatch (prodp2p,  A*t^n, t),
+    prodp2p(V,t),  
+    return(A)
+)$
+*/
+
+/* Forward  Fourier trnsform */
+ft(expr,t,f):= block([ ret:false, p1, p2, sa ],
+    assume(f>0),
+    ret:FT(expr),
+    if opIftp(expr) then (
+       ret: apply1 (ret,  ft_ift),
+       return (ret)
+    ),   
+    if opEqp(ret) then (
+        p1:part(ret,1),
+        p1:apply1(p1, ft_ift),
+        p2:part(ret,2),
+        p2:apply1(p2, ft_ift),
+        ret:p1=p2
+    ),
+    if constantp(expr) then 
+      return(apply1(ret, ftc))
+    else (        
+        "print (args(ret))",
+       
+      if isOp(expr, _rect) then  (
+        " ret: ev(apply1(ret,  ft_rect), eval)",
+        ret:apply1(ret,  ft_rect),
+        return (ret)
+      ), 
+      if isOp(expr, _triang) then (
+        " ret:ev(apply1(ret,  ft_triang), eval)",
+        ret:apply1(ret,  ft_triang),
+        return(ret)
+      ), 
+      if isOp(expr, _stp) then (
+        " ret:ev(apply1(ret,  ft_step), eval)",
+        ret:apply1(ret,  ft_step),
+        return (ret)  
+      ),     
+      if isOp(expr, _sinc) then (
+       " ret: ev(apply1(ret, ft_sinc, ft_sinc2), eval) ",
+       ret:apply1(ret, ft_sinc, ft_sinc2),
+       return (ret)
+      ),
+      ret: apply1(ret, ft_diff1),
+       ret: apply1(ret,   ft_delta1, ft_delta, ft_ie),
+       ret: apply1(ret, ft_signum, ft_sin, ft_sin2, ft_cos, ft_cos2),
+       
+       ret: apply1(ret, ft_main)
+    ),
+    ret:ratsimp(ret),
+    ret:expand(ret),
+ return (ret)
+)$
+ 
+  /*  Bessel trnsform */
+ftr(expr,r,f):=2*%pi*integrate(expr*bessel_j(0,2*%pi*f*r)*r,r,0,inf)$
+ 
+testf('expr):=block(
+    op(expr)
+)$
+ /* Inverse  Fourier trnsform */
+ift(expr,f,t):= block([ ret:false, p1, p2 ],
+    ret:IFT(expr),
+    if opFtp(expr) then (
+       ret: apply1 (ret,  ift_ft),
+       return (ret)
+    ),   
+    if opEqp(ret) then (
+        p1:part(ret,1),
+        p1:apply1(p1, ift_ft),
+        p2:part(ret,2),
+        p2:apply1(p2, ift_ft),
+        ret:p1=p2
+    ),
+    if constantp(expr) then (
+        ret: apply1(ret, iftc),
+        return(ret)
+    ) else (
+          print (args(ret)),
+       
+      if isOp(expr, _rect) then  (
+        ret: ev(apply1(ret,  ift_rect), eval),
+        return (ret)
+      ), 
+      if isOp(expr, _triang) then (
+        ret:ev(apply1(ret,  ift_triang), eval),
+        return(ret)
+      ), 
+      if isOp(expr, _stp) then (
+        ret:ev(apply1(ret,  ift_step), eval),
+        return (ret)  
+      ),     
+      if isOp(expr, _sinc) then (
+       ret: ev(apply1(ret, ift_sinc, ift_sinc2), eval),
+       return (ret)
+      ),
+       ret: apply1(ret, ift_signum),
+       ret: apply1(ret, ift_delta1, ift_delta),
+       ret: apply1(ret, ift_main)
+    ),
+    ret:ratsimp(ret),
+ return (ret)
+)$
+
+/***************
+*   Special functions
+************/
+
+
+  /* workaround Maxima's weird function concept
+*/  
+rect(t,T):=funmake (_rect, [t ,T])$    
+_rect(t,T):= block( 
+    if abs (t)<= T/2 then return(1)
+    else return (0)
+)$
+
+triang(t,T):=funmake (_triang, [t ,T])$
+_triang(t,T):= block(
+    if abs (t)<= T then return (1 - abs(t)/T)
+    else return (0)
+)$
+
+stp(t):=funmake (_step, [t])$
+_step(t):= block(
+    if t>=0 then return (1) else return (0)
+)$
+
+sinc(t,T):=funmake (_sinc, [t ,T] )$
+_sinc(t, T):= block(
+    if t#0 then return (%pi*sin(t*T*%pi)/(t*T))
+    else return (1)
+)$
+
+/*
+sinc(t,T):block(
+      if t#0 then return (funmake('sinc, [t ,T]), %pi*sin(t*T*%pi)/(t*T))
+        else return (1)
+)$
+
+
+pdf_normal(x,m,s):=block([cp:control1(s)],
+   if cp=-1 then error("Illegal parameter"),
+   if cp=0 then return(funmake('pdf_normal,[x,m,s] ) ),
+   exp(-(x-m)^2/(2*s^2))/(sqrt(2*%pi)*s)  )$
+*/
+
+/*****************************
+*         Private functions
+*****************************/
+
+/*
+funp(V, fname):= block([p1, p2, ret:false ],
+    p1:string (inpart (V,0)), 
+    print(p1),  
+    p2:string (fname),
+    ret: is(equal(p1, p2)),
+    print (ret),
+    return(ret)
+)$
+
+funmap(V):= ([ fn, lv] , 
+ fn:sconcat ("_", string (inpart (V,0))),
+ lv: listofvars (V),
+ lambda( [lv], apply(eval_string (fn), lv))
+)$
+*/ 
+
+/*******************************
+*         Utility functions
+****************************/  
+
+splitBy1(V, t):= block([A:false],
+    matchdeclare (A, atom, t, atom),
+    defmatch (prodp,  A*t, t),
+    prodp(V,t),  
+    return(A)
+)$
+
+splitByN(V, t):= block([A:false],
+    matchdeclare (A, true, t, atom),
+    defmatch (prodp,  A*t, t),
+    prodp(V,t),  
+    if not freeof(t, A) then return (false),
+    return(A)
+)$
+
+/* utility like args, but avoids / or - */
+inargsa(z):=block( 
+if (atom(z)) then return ([z])
+else return( substinpart("[",z,0))
+)$
+
+opEqp(V):= isOp (V, "=")$
+
+opFtp(V):= isOp (V, FT)$
+opIftp(V):= isOp (V, IFT)$
+
+isOp(V, oper):= block(
+    if atom(V) then return (false)
+    else return (is(op(V) = oper))
+)$
+
+
+
+/******* END ******************/
