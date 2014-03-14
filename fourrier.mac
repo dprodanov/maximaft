@@ -1,7 +1,7 @@
 /*
  * (C) Dimiter Prodanov
  *
- * @version 0.6 Date 27 Feb 2014
+ * @version 0.7 Date 13 March 2014
  *
  * @author Dimiter Prodanov
  * 		  IMEC
@@ -34,6 +34,8 @@ block(
 	disp("last update: Mar, 2014"),
 	disp("")
 )$
+
+noundisp:true$
 
 declare (FT, linear)$
 declare (IFT, linear)$
@@ -141,10 +143,8 @@ splitBy2(V, t, n):= block([A:V],
 ft(expr,t,f):= block([ ret:false, p1, p2, sa ],
     assume(f>0),
     ret:FT(expr),
-    if opIftp(expr) then (
-       ret: apply1 (ret,  ft_ift),
-       return (ret)
-    ),   
+    if opIftp(expr) then return (apply1 (ret,  ft_ift)),
+    
     if opEqp(ret) then (
         p1:part(ret,1),
         p1:apply1(p1, ft_ift),
@@ -155,25 +155,22 @@ ft(expr,t,f):= block([ ret:false, p1, p2, sa ],
     if constantp(expr) then 
       return(apply1(ret, ftc))
     else (        
-        "print (args(ret))",
+      sarg:first(inargsa(ret)),
+      print (op (sarg)),
        
-      if isOp(expr, _rect) then  (
-        " ret: ev(apply1(ret,  ft_rect), eval)",
+      if isOp(sarg, _rect) then  (
         ret:apply1(ret,  ft_rect),
         return (ret)
       ), 
-      if isOp(expr, _triang) then (
-        " ret:ev(apply1(ret,  ft_triang), eval)",
+      if isOp(sarg, _triang) then (
         ret:apply1(ret,  ft_triang),
         return(ret)
       ), 
-      if isOp(expr, _stp) then (
-        " ret:ev(apply1(ret,  ft_step), eval)",
+      if isOp(sarg, _stp) then (
         ret:apply1(ret,  ft_step),
         return (ret)  
       ),     
-      if isOp(expr, _sinc) then (
-       " ret: ev(apply1(ret, ft_sinc, ft_sinc2), eval) ",
+      if isOp(sarg, _sinc) then (
        ret:apply1(ret, ft_sinc, ft_sinc2),
        return (ret)
       ),
@@ -187,13 +184,62 @@ ft(expr,t,f):= block([ ret:false, p1, p2, sa ],
     ret:expand(ret),
  return (ret)
 )$
- 
+
+/* Forward  Fourier trnsform 
+ft2(expr,t,f):= block([ ret:false, p1, p2, sa, sarg ],
+    assume(f>0),
+    ret:FT(expr),
+    if opIftp(expr) then return (apply1 (ret,  ft_ift)),
+    
+    if opEqp(ret) then (
+        p1:part(ret,1),
+        p1:apply1(p1, ft_ift),
+        p2:part(ret,2),
+        p2:apply1(p2, ft_ift),
+        ret:p1=p2
+    ),
+    if constantp(expr) then 
+      return(apply1(ret, ftc))
+    else (        
+        
+      sarg:first(inargsa(ret)),
+      print (op (sarg)),
+      if isOp(sarg, rect) then  (
+      print ("rect case"),
+        ret:apply1(ret,  ft_rect),
+        return (ret)
+      ), 
+      if isOp(expr, _triang) then (
+        ret:apply1(ret,  ft_triang),
+        return(ret)
+      ), 
+      if isOp(expr, _stp) then (
+        ret:apply1(ret,  ft_step),
+        return (ret)  
+      ),     
+      if isOp(expr, _sinc) then (
+       ret:apply1(ret, ft_sinc, ft_sinc2),
+       return (ret)
+      ),
+      ret: apply1(ret, ft_diff1),
+       ret: apply1(ret,   ft_delta1, ft_delta, ft_ie),
+       ret: apply1(ret, ft_signum, ft_sin, ft_sin2, ft_cos, ft_cos2),
+       
+       ret: apply1(ret, ft_main)
+    ),
+    ret:ratsimp(ret),
+    ret:expand(ret),
+ return (ret)
+)$
+ */
   /*  Bessel trnsform */
 ftr(expr,r,f):=2*%pi*integrate(expr*bessel_j(0,2*%pi*f*r)*r,r,0,inf)$
  
+ /*
 testf('expr):=block(
     op(expr)
 )$
+*/
  /* Inverse  Fourier trnsform */
 ift(expr,f,t):= block([ ret:false, p1, p2 ],
     ret:IFT(expr),
@@ -246,10 +292,8 @@ ift(expr,f,t):= block([ ret:false, p1, p2 ],
   /* workaround Maxima's weird function concept
 */  
 rect(t,T):=funmake (_rect, [t ,T])$    
-_rect(t,T):= block( 
-    if abs (t)<= T/2 then return(1)
-    else return (0)
-)$
+_rect(t,T):= if abs (t)<= T/2 then return(1) else return (0)$
+ 
 
 triang(t,T):=funmake (_triang, [t ,T])$
 _triang(t,T):= block(
@@ -258,9 +302,7 @@ _triang(t,T):= block(
 )$
 
 stp(t):=funmake (_step, [t])$
-_step(t):= block(
-    if t>=0 then return (1) else return (0)
-)$
+_step(t):=  if t>=0 then return (1) else return (0)$
 
 sinc(t,T):=funmake (_sinc, [t ,T] )$
 _sinc(t, T):= block(
@@ -334,7 +376,7 @@ opIftp(V):= isOp (V, IFT)$
 
 isOp(V, oper):= block(
     if atom(V) then return (false)
-    else return (is(op(V) = oper))
+    else return (is(op(V) = oper)  or is(op(V) = nounify(oper)))
 )$
 
 
