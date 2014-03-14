@@ -258,21 +258,21 @@ ift(expr,f,t):= block([ ret:false, p1, p2 ],
         ret: apply1(ret, iftc),
         return(ret)
     ) else (
-          print (args(ret)),
-       
-      if isOp(expr, _rect) then  (
+        sarg:first(inargsa(ret)),
+		print (op (sarg)),
+      if isOp(sarg, _rect) then  (
         ret: ev(apply1(ret,  ift_rect), eval),
         return (ret)
       ), 
-      if isOp(expr, _triang) then (
+      if isOp(sarg, _triang) then (
         ret:ev(apply1(ret,  ift_triang), eval),
         return(ret)
       ), 
-      if isOp(expr, _stp) then (
+      if isOp(sarg, _stp) then (
         ret:ev(apply1(ret,  ift_step), eval),
         return (ret)  
       ),     
-      if isOp(expr, _sinc) then (
+      if isOp(sarg, _sinc) then (
        ret: ev(apply1(ret, ift_sinc, ift_sinc2), eval),
        return (ret)
       ),
