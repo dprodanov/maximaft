@@ -1,7 +1,7 @@
 /*
  * (C) Dimiter Prodanov
  *
- * @version 0.8 Date 02 April 2014
+ * @version 1.0 Date 05 April 2014
  *
  * @author Dimiter Prodanov
  * 		  IMEC
@@ -29,9 +29,9 @@ fourinfo([_package]):=
 block(
 	disp("package name: fourrier.mac (c)"),
 	disp("author: Dimiter Prodanov"),
-	disp("revision: 1.0"),
+	disp("version: 1.0"),
 	disp("Recommended location: share/contrib"),
-	disp("last update: Mar, 2014"),
+	disp("last update: 05 Apr, 2014"),
 	disp("")
 )$
 
@@ -57,13 +57,13 @@ matchdeclare(t, true, f, true, x, true),
 )$
 
 ( "special functions",
-matchdeclare([t, f], lambda([u], not(constantp(u)) and atom(u)), [t0,  f0 ], constantp, T, atom, a, lambda([u], freeof(t,a) ) ),
+matchdeclare([t, f], lambda([u], not(constantp(u)) and atom(u)), T, atom, a, lambda([u], freeof(t,a) ) ),
     /* **   special functions
         */
     defrule(ft_delta, FT(delta(t)), 1),
-    defrule(ft_delta1, FT(delta(t - t0)), exp(- 2*%pi*f*t0)),
+   " defrule(ft_delta1, FT(delta(t - t0)), exp(- 2*%pi*f*t0))",
     defrule(ift_delta, IFT(delta(f)), 1),
-    defrule(ift_delta1, IFT(delta(f - f0)), exp( 2*%pi*f0*t)),
+    "defrule(ift_delta1, IFT(delta(f - f0)), exp( 2*%pi*f0*t))",
     defrule(ft_t, FT(t), -2* %pi* 1/(f^2) ), 
     defrule(ift_t,  IFT(1/(f^2)), -t/(2* %pi) ), 
     defrule(ft_rect, FT(_rect(t, T)), 1/abs(T)*'sinc(f,1/T)),
@@ -87,6 +87,7 @@ matchdeclare([t, f], lambda([u], not(constantp(u)) and atom(u)), [t0,  f0 ], con
 ( "differentiation and integration",
 matchdeclare([t, f, axt], lambda([u], not(constantp(u)) and atom (u)), g, true, n, atom, a, atom, F, true),
     defrule(ft_diff1, FT('diff(g(t), t,n)),  (%i*2*%pi*f)^n *FT(g(t)) ),
+	"defrule(ft_int1, FT('integrate(g(t), t)),  1/(%i*2*%pi*f)*FT(g(t)) )",
     defrule(ft_diff2, FT(axt), lambda([axt], ftPow(axt) )   ),
     "defrule(ft_scale, FT(F(axt)), ftScale(axt, F)  )"
 )$
@@ -107,12 +108,34 @@ ftcsimp(V):=oconstsimp(V, op(V), FT)$
 iftprodsimp(V, s):=oprodsimp(V, s, IFT)$
 iftcsimp(V):=oconstsimp(V, op(V), IFT)$
 
-oprodsimp(V, s, OP ):= block( [ %A ],
+oprodsimp(V, s, OP ):= block( [ %A, %R ],
 	matchdeclare(%A, lambda([x], freeof(s, x) and atom(x)), %R, lambda([x], not freeof(s, x)), s, true),
 	defmatch (oprodp,  %A*%R, s),
 	oprodp(V, s),
 	return (%A*OP(%R))
 )$
+
+(matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constantp(u)) and symbolp(u)), fn, symbolp),
+	defrule (simftshift, FT(fn(V)), ftsumsimp(fn(V), t, f)),
+	defrule (simiftshift, IFT(fn(V)), iftsumsimp(fn(V), f, t))
+)$
+
+ftsumsimp(V, s, f):=block( [ %A, p1, p2],
+matchdeclare(%A, lambda([x], freeof(s, x) ), s, atom),
+	defmatch (osump,  %A + s, s),
+	p2:op(V),
+	p1:first(inargsa(V)),
+	osump(p1, s),
+	return (FT(p2(s))*exp( 2*%pi*f*%A))
+)$
+
+iftsumsimp(V, s, t):=block( [ %A, p1, p2],
+	p2:op(V),
+	p1:first(inargsa(V)),
+	osump(p1, s),
+	return (IFT(p2(s))*exp(- 2*%pi*t*%A))
+)$
+ 
 
 oconstsimp(V, fn, OP):= block( [%c] ,
 	matchdeclare (%c, constantp, fn, symbolp),
@@ -168,7 +191,7 @@ splitByPow(V, t) := block( [ret,  %A:false, %N:0],
 nlistp(_x):=  not(listp(_x))$
 
 
-/* Forward  Fourier trnsform */
+/* Forward  Fourier trnsform 
 ft(expr,t,f):= block([ ret:false, p1, p2, sarg ],
     assume(f>0),
     ret:FT(expr),
@@ -213,9 +236,9 @@ ft(expr,t,f):= block([ ret:false, p1, p2, sarg ],
     ret:expand(ret),
  return (ret)
 )$
-
+*/
 /* Forward  Fourier trnsform */
-ft2(expr,t,f):= block([ ret, p1, p2 ],
+ft(expr,t,f):= block([ ret, p1, p2 ],
 	ret:trigexpand(expr),
 	ret:expand(ret),
 	ret:FT(ret), 
@@ -228,7 +251,7 @@ ft2(expr,t,f):= block([ ret, p1, p2 ],
         p2:apply1(p2, ft_ift),
         ret:p1=p2
     ),
-	ret: apply1(ret, simpftlin, simftc),
+	ret: apply1(ret, simpftlin, simftc, simftshift),
 	ret:apply (apply1, cons (ret, specific_FT_rules)),
 	"print (ret)",
 	if not freeof (t, ret) then
@@ -239,7 +262,7 @@ ft2(expr,t,f):= block([ ret, p1, p2 ],
  return (ret)
 )$
  
- /* Inverse  Fourier trnsform */
+ /* Inverse  Fourier trnsform 
 ift(expr,f,t):= block([ ret:false, p1, p2, sarg ],
     ret:IFT(expr),
     if opFtp(expr) then (
@@ -281,8 +304,9 @@ ift(expr,f,t):= block([ ret:false, p1, p2, sarg ],
     ret:ratsimp(ret),
  return (ret)
 )$
+*/
 
-ift2(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
+ift(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
    assume(t>0), 
     if opFtp(expr) then (
        ret: apply1 (ret,  ift_ft),
@@ -295,7 +319,7 @@ ift2(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
         p2:apply1(p2, ift_ft),
         ret:p1=p2
     ),
-	ret: apply1(ret, simpiftlin, simiftc),
+	ret: apply1(ret, simpiftlin, simiftc, simiftshift),
     ret:apply (apply1, cons (ret, specific_IFT_rules)),
 	"print (ret)",
     ret:apply1 (ret, ift_main),
