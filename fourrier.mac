@@ -61,9 +61,7 @@ matchdeclare([t, f], lambda([u], not(constantp(u)) and atom(u)), T, atom, a, lam
     /* **   special functions
         */
     defrule(ft_delta, FT(delta(t)), 1),
-   " defrule(ft_delta1, FT(delta(t - t0)), exp(- 2*%pi*f*t0))",
     defrule(ift_delta, IFT(delta(f)), 1),
-    "defrule(ift_delta1, IFT(delta(f - f0)), exp( 2*%pi*f0*t))",
     defrule(ft_t, FT(t), -2* %pi* 1/(f^2) ), 
     defrule(ift_t,  IFT(1/(f^2)), -t/(2* %pi) ), 
     defrule(ft_rect, FT(_rect(t, T)), 1/abs(T)*'sinc(f,1/T)),
@@ -91,7 +89,6 @@ matchdeclare([t, f, axt], lambda([u], not(constantp(u)) and atom (u)), g, true, 
     defrule(ft_diff2, FT(axt), lambda([axt], ftPow(axt) )   ),
     "defrule(ft_scale, FT(F(axt)), ftScale(axt, F)  )"
 )$
-
 
 (matchdeclare(V, opMp, [t, f ], lambda([u], not(constantp(u)) and symbolp(u))),
 	defrule (simpftlin, FT(V), ftprodsimp(V, t) ),
@@ -190,53 +187,6 @@ splitByPow(V, t) := block( [ret,  %A:false, %N:0],
 
 nlistp(_x):=  not(listp(_x))$
 
-
-/* Forward  Fourier trnsform 
-ft(expr,t,f):= block([ ret:false, p1, p2, sarg ],
-    assume(f>0),
-    ret:FT(expr),
-    if opIftp(expr) then return (apply1 (ret,  ft_ift)),
-    
-    if opEqp(ret) then (
-        p1:part(ret,1),
-        p1:apply1(p1, ft_ift),
-        p2:part(ret,2),
-        p2:apply1(p2, ft_ift),
-        ret:p1=p2
-    ),
-    if constantp(expr) then 
-      return(apply1(ret, ftc))
-    else (        
-      sarg:first(inargsa(ret)),
-      "print (op (sarg))",
-       
-      if isOp(sarg, _rect) then  (
-        ret:apply1(ret,  ft_rect),
-        return (ret)
-      ), 
-      if isOp(sarg, _triang) then (
-        ret:apply1(ret,  ft_triang),
-        return(ret)
-      ), 
-      if isOp(sarg, _stp) then (
-        ret:apply1(ret,  ft_step),
-        return (ret)  
-      ),     
-      if isOp(sarg, _sinc) then (
-       ret:apply1(ret, ft_sinc, ft_sinc2),
-       return (ret)
-      ),
-      ret: apply1(ret, ft_diff1),
-      ret: apply1(ret, ft_delta1, ft_delta, ft_ie),
-      ret: apply1(ret, ft_signum, ft_sin, ft_sin2, ft_cos, ft_cos2),
-       
-       ret: apply1(ret, ft_main)
-    ),
-    ret:ratsimp(ret),
-    ret:expand(ret),
- return (ret)
-)$
-*/
 /* Forward  Fourier trnsform */
 ft(expr,t,f):= block([ ret, p1, p2 ],
 	ret:trigexpand(expr),
@@ -261,50 +211,6 @@ ft(expr,t,f):= block([ ret, p1, p2 ],
     ret:expand(ret),
  return (ret)
 )$
- 
- /* Inverse  Fourier trnsform 
-ift(expr,f,t):= block([ ret:false, p1, p2, sarg ],
-    ret:IFT(expr),
-    if opFtp(expr) then (
-       ret: apply1 (ret,  ift_ft),
-       return (ret)
-    ),   
-    if opEqp(ret) then (
-        p1:part(ret,1),
-        p1:apply1(p1, ift_ft),
-        p2:part(ret,2),
-        p2:apply1(p2, ift_ft),
-        ret:p1=p2
-    ),
-    if constantp(expr) then (
-        ret: apply1(ret, iftc),
-        return(ret)
-    ) else (      
-      sarg:first(inargsa(ret)),
-      if isOp(sarg, _rect) then  (
-        ret: ev(apply1(ret,  ift_rect), eval),
-        return (ret)
-      ), 
-      if isOp(sarg, _triang) then (
-        ret:ev(apply1(ret,  ift_triang), eval),
-        return(ret)
-      ), 
-      if isOp(sarg, _stp) then (
-        ret:ev(apply1(ret,  ift_step), eval),
-        return (ret)  
-      ),     
-      if isOp(sarg, _sinc) then (
-       ret: ev(apply1(ret, ift_sinc, ift_sinc2), eval),
-       return (ret)
-      ),
-       ret: apply1(ret, ift_signum),
-       ret: apply1(ret, ift_delta1, ift_delta),
-       ret: apply1(ret, ift_main)
-    ),
-    ret:ratsimp(ret),
- return (ret)
-)$
-*/
 
 ift(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
    assume(t>0), 
@@ -397,7 +303,4 @@ isOp(V, oper):= block(
     if atom(V) then return (false)
     else return (is(op(V) = oper)  or is(op(V) = nounify(oper)))
 )$
-
-
-
 /******* END ******************/
