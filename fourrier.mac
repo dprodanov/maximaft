@@ -1,7 +1,7 @@
 /*
  * (C) Dimiter Prodanov
  *
- * @version 1.0 Date 05 April 2014
+ * @version 1.0 Date 06 April 2014
  *
  * @author Dimiter Prodanov
  * 		  IMEC
@@ -31,7 +31,7 @@ block(
 	disp("author: Dimiter Prodanov"),
 	disp("version: 1.0"),
 	disp("Recommended location: share/contrib"),
-	disp("last update: 05 Apr, 2014"),
+	disp("last update: 06 Apr, 2014"),
 	disp("")
 )$
 
@@ -47,7 +47,7 @@ matchdeclare(seq, opEqp),
 )$
 
 ( "Basic FT IFT  rules",
-matchdeclare(t, true, f, true, x, true),
+matchdeclare([ t, f ], atom, x, true),
     defrule(ft_ift, FT(IFT(t)), t),
     defrule(ift_ft, IFT(FT(t)), t),
     defrule(ftc, FT(1), delta(f)),
@@ -83,14 +83,32 @@ matchdeclare([t, f], lambda([u], not(constantp(u)) and atom(u)), T, atom, a, lam
 )$
 
 ( "differentiation and integration",
-matchdeclare([t, f, axt], lambda([u], not(constantp(u)) and atom (u)), g, true, n, atom, a, atom, F, true),
-    defrule(ft_diff1, FT('diff(g(t), t,n)),  (%i*2*%pi*f)^n *FT(g(t)) ),
-	"defrule(ft_int1, FT('integrate(g(t), t)),  1/(%i*2*%pi*f)*FT(g(t)) )",
-    defrule(ft_diff2, FT(axt), lambda([axt], ftPow(axt) )   ),
-    "defrule(ft_scale, FT(F(axt)), ftScale(axt, F)  )"
+matchdeclare([t, f, axt], lambda([u], not(constantp(u)) and atom (u)), g, true, n, atom, a, atom),
+    defrule(ft_diff1, FT('diff(g(t), t, n)),  (%i*2*%pi*f)^n *FT(g(t)) ),
+	defrule(ft_int1, FT('integrate(g(t), t)),  %i/(2*%pi*f)*FT(g(t)) ),
+    defrule(ft_diff2, FT(axt), lambda([axt], ftPow(axt) )   )
 )$
 
-(matchdeclare(V, opMp, [t, f ], lambda([u], not(constantp(u)) and symbolp(u))),
+ftPow(axt):= block([g,s,n], 
+   s:inargsa(axt),    
+   g:s[2],  
+   s:inargsa(s[1]),     
+   n:s[2],
+   splitByPow(axt, t), 
+   return (1/(-%i*2*%pi)^n *'diff(FT(g),f,n)  ) 
+)$
+
+splitByPow(V, t) := block( [ret,  %A:false, %N:0],
+   matchdeclare(%A, nlistp, t, atom, %N,  nlistp),
+   defmatch (powp,  %A*t^%N, t),
+   powp(V,t),  
+   "print (%A, %N)",
+   ret: [ %A, %N],
+   return(ret)
+)$
+
+("linear rule",
+matchdeclare(V, opMp, [t, f ], lambda([u], not(constantp(u)) and symbolp(u))),
 	defrule (simpftlin, FT(V), ftprodsimp(V, t) ),
 	defrule (simpiftlin, IFT(V), iftprodsimp(V,f) )
 )$
@@ -105,32 +123,39 @@ ftcsimp(V):=oconstsimp(V, op(V), FT)$
 iftprodsimp(V, s):=oprodsimp(V, s, IFT)$
 iftcsimp(V):=oconstsimp(V, op(V), IFT)$
 
-oprodsimp(V, s, OP ):= block( [ %A, %R ],
-	matchdeclare(%A, lambda([x], freeof(s, x) and atom(x)), %R, lambda([x], not freeof(s, x)), s, true),
+oprodsimp(V, s, OP ):= block( [ %A, %R, res ],
+	matchdeclare(%A, lambda([x], freeof(s, x)), %R, lambda([x], not freeof(s, x)), s, true),
 	defmatch (oprodp,  %A*%R, s),
-	oprodp(V, s),
-	return (%A*OP(%R))
+	res: oprodp(V, s),
+	if (res#false) then
+		return (%A*OP(%R))
+	else return (OP(V))
 )$
 
-(matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constantp(u)) and symbolp(u)), fn, symbolp),
+("shifting",
+matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constantp(u)) and symbolp(u)), fn, symbolp),
 	defrule (simftshift, FT(fn(V)), ftsumsimp(fn(V), t, f)),
 	defrule (simiftshift, IFT(fn(V)), iftsumsimp(fn(V), f, t))
 )$
 
-ftsumsimp(V, s, f):=block( [ %A, p1, p2],
+ftsumsimp(V, s, f):=block( [ %A, p1, p2, res],
 matchdeclare(%A, lambda([x], freeof(s, x) ), s, atom),
 	defmatch (osump,  %A + s, s),
 	p2:op(V),
 	p1:first(inargsa(V)),
-	osump(p1, s),
-	return (FT(p2(s))*exp( 2*%pi*f*%A))
+	res: osump(p1, s),
+	if (res#false) then
+		return (FT(p2(s))*exp( 2*%pi*f*%A))
+	else return (FT(V))
 )$
 
-iftsumsimp(V, s, t):=block( [ %A, p1, p2],
+iftsumsimp(V, s, t):=block( [ %A, p1, p2, res],
 	p2:op(V),
 	p1:first(inargsa(V)),
-	osump(p1, s),
-	return (IFT(p2(s))*exp(- 2*%pi*t*%A))
+	res: osump(p1, s),
+	if (res#false) then
+		return (IFT(p2(s))*exp(- 2*%pi*t*%A))
+	else return (IFT(V))
 )$
  
 
@@ -153,44 +178,32 @@ oconstsimp(V, fn, OP):= block( [%c] ,
 specific_FT_rules : sublist (rules, lambda ([a], smismatch ("ft", sconcat (a)) = 3 and a # 'ft_main))$
 specific_IFT_rules : sublist (rules, lambda ([a], smismatch ("ift", sconcat (a)) = 4 and a # 'ift_main))$
 
-/*
-("imaginary arguments",
- matchdeclare([ it ], lambda([u], splitByN(u, %i)#false ) ),
- defrule(ft_ie2, FT(exp(it)), lambda([u], u:splitByN(u, %i), 1/abs(u) *delta(f - 1/u /(2*%pi) ))   )
+
+( "scaling",
+matchdeclare(V, opMp, t, symbolp, g, symbolp, a, atom),
+    defrule (simftscale, FT (g(V)), ftprodsimp2 (g(V), t )),
+	defrule (simiftscale, IFT (g(V)), iftprodsimp2 (g(V), t ))
 )$
 
-ftScale(axt,F):= block([a, ret], 
-  a: splitBy1(axt, t), 
-  ret:1/abs(a)* FT(F(t/a) ),
-  return(ret) 
-)$ 
-*/
+iftprodsimp2(V, s):=oprodsimp2(V, s, IFT)$
+ftprodsimp2(V, s):=oprodsimp2(V, s, FT)$
 
-ftPow(axt):= block([g,s,n], 
-   s:inargsa(axt),    
-   g:s[2],  
-   s:inargsa(s[1]),     
-   n:s[2],
-   splitByPow(axt, t), 
-   return (1/(-%i*2*%pi)^n *'diff(FT(g),f,n)  ) 
+oprodsimp2(V, s, OP ):= block( [ %A,  res, y:V ],
+	if op(V)=OP then y:first(inargsa(V)),
+	matchdeclare( %A , lambda([x], freeof(s, x) and atom (x)), s, atom, g, symbolp),
+	defmatch (oprod2p,  g(%A*s), s),
+	res: oprod2p(y, s),
+	"print (res, y)",
+	if (res#false) then (
+		res:subst (s/%A, s, y),
+		return ([OP(res), %A])
+	)		
+	else return (OP(V)) 	
 )$
-
-
-splitByPow(V, t) := block( [ret,  %A:false, %N:0],
-   matchdeclare(%A, nlistp , t, atom, %N,  nlistp),
-   defmatch (powp,  %A*t^%N, t),
-   powp(V,t),  
-   "print (%A, %N)",
-   ret: [ %A, %N],
-   return(ret)
-)$
-
-nlistp(_x):=  not(listp(_x))$
 
 /* Forward  Fourier trnsform */
-ft(expr,t,f):= block([ ret, p1, p2 ],
-	ret:trigexpand(expr),
-	ret:expand(ret),
+ft(expr,t,f):= block([ ret, p1, p2, fr:1 ],
+	ret:expand(expr),
 	ret:FT(ret), 
     assume(f>0),  
     if opIftp(expr) then return (apply1 (ret,  ft_ift)),   
@@ -201,18 +214,27 @@ ft(expr,t,f):= block([ ret, p1, p2 ],
         p2:apply1(p2, ft_ift),
         ret:p1=p2
     ),
-	ret: apply1(ret, simpftlin, simftc, simftshift),
+	"print (ret)",
+	ret: apply1(ret, simpftlin, simftc, simftshift, simftscale),
+	if listp(ret) then (
+		print ("sc ", ret),
+		fr:second(ret),
+		ret: first(ret)
+	),
 	ret:apply (apply1, cons (ret, specific_FT_rules)),
 	"print (ret)",
 	if not freeof (t, ret) then
 		ret:apply1 (ret, ft_main),
+	if fr#1 then 
+		ret: 1/abs(fr)*subst( f/fr, f, ret),	
 	"ret:apply1 (ret, expand_rect, expand_step)",
     ret:ratsimp(ret),
     ret:expand(ret),
  return (ret)
 )$
 
-ift(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
+/* Inverse  Fourier trnsform */
+ift(expr,f,t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
    assume(t>0), 
     if opFtp(expr) then (
        ret: apply1 (ret,  ift_ft),
@@ -225,10 +247,17 @@ ift(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
         p2:apply1(p2, ift_ft),
         ret:p1=p2
     ),
-	ret: apply1(ret, simpiftlin, simiftc, simiftshift),
+	ret: apply1(ret, simpiftlin, simiftc, simiftshift, simiftscale),
+	if listp(ret) then (
+		print ("sc ", ret),
+		fr:second(ret),
+		ret: first(ret)
+	),
     ret:apply (apply1, cons (ret, specific_IFT_rules)),
 	"print (ret)",
     ret:apply1 (ret, ift_main),
+	if fr#1 then 
+		ret: 1/abs(fr)*subst( t/fr, t, ret),	
 	"ret:apply1 (ret, expand_rect, expand_step)",
     ret:ratsimp(ret),
     ret:expand(ret),
@@ -240,7 +269,7 @@ ift(expr,f,t):= block([ ret:IFT(expr), p1, p2 ],
 ************/
 
 
-  /* workaround Maxima's weird function concept
+/* workaround Maxima's weird function concept
 */  
 rect(t,T):=funmake (_rect, [t ,T])$    
 _rect(t,T):= if abs (t)<= T/2 then return(1) else return (0)$
@@ -271,6 +300,7 @@ _sinc(t, T):= block(
 /*******************************
 *         Utility functions
 ****************************/  
+nlistp(_x):=  not(listp(_x))$
 
 splitBy1(V, t):= block([A:false],
     matchdeclare (A, atom, t, atom),
@@ -279,6 +309,7 @@ splitBy1(V, t):= block([A:false],
     return(A)
 )$
 
+/*
 splitByN(V, t):= block([A:false],
     matchdeclare (A, true, t, atom),
     defmatch (prodp,  A*t, t),
@@ -286,7 +317,7 @@ splitByN(V, t):= block([A:false],
     if not freeof(t, A) then return (false),
     return(A)
 )$
-
+*/
 /* utility like args, but avoids / or - */
 inargsa(z):=block( 
 if (atom(z)) then return ([z])
