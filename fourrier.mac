@@ -188,15 +188,16 @@ matchdeclare(V, opMp, t, symbolp, g, symbolp, a, atom),
 iftprodsimp2(V, s):=oprodsimp2(V, s, IFT)$
 ftprodsimp2(V, s):=oprodsimp2(V, s, FT)$
 
-oprodsimp2(V, s, OP ):= block( [ %A,  res, y:V ],
+oprodsimp2(V, s, OP ):= block( [ %B,  res, y:V ],
 	if op(V)=OP then y:first(inargsa(V)),
-	matchdeclare( %A , lambda([x], freeof(s, x) and atom (x)), s, atom, g, symbolp),
-	defmatch (oprod2p,  g(%A*s), s),
+	matchdeclare( %B , lambda([x], freeof(s, x) and atom (x)), s, atom, g, symbolp),
+	defmatch (oprod2p,  g(%B*s), s),
 	res: oprod2p(y, s),
-	"print (res, y)",
+	
 	if (res#false) then (
-		res:subst (s/%A, s, y),
-		return ([OP(res), %A])
+		res:subst (s/%B, s, y),
+		"print (%B)",
+		return ([OP(res), %B])
 	)		
 	else return (OP(V)) 	
 )$
@@ -218,7 +219,7 @@ ft(expr,t,f):= block([ ret, p1, p2, fr:1 ],
 	ret: apply1(ret, simpftlin, simftc, simftshift, simftscale),
 	if listp(ret) then (
 		print ("sc ", ret),
-		fr:second(ret),
+		fr:part(second(ret),1),
 		ret: first(ret)
 	),
 	ret:apply (apply1, cons (ret, specific_FT_rules)),
@@ -250,7 +251,7 @@ ift(expr,f,t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
 	ret: apply1(ret, simpiftlin, simiftc, simiftshift, simiftscale),
 	if listp(ret) then (
 		print ("sc ", ret),
-		fr:second(ret),
+		fr:part(second(ret),1),
 		ret: first(ret)
 	),
     ret:apply (apply1, cons (ret, specific_IFT_rules)),
