@@ -8,7 +8,8 @@
 
  * @contents
  * This library computes Fourier transforms
- *  I thank also Robert Dodier for  the rule handling code
+ *  I thank also Robert Dodier for  the rule handling code 
+ *  and the code handling distributive properties of FT and IFT
  * 
  * @license This library is free software; you can redistribute it and/or
  *      modify it under the terms of the GNU Lesser General Public
@@ -24,21 +25,29 @@
  *      License along with this library; if not, write to the Free Software
  *      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+ if get('fourrier,'version)=false then ( 
+	load("dist.lisp")
+ )$
+ 
 fourinfo([_package]):=
 block(
 	disp("package name: fourrier.mac (c)"),
 	disp("author: Dimiter Prodanov"),
-	disp("version: 1.0"),
+	disp("version: 1.1"),
 	disp("Recommended location: share/contrib"),
 	disp("last update: 06 Apr, 2014"),
 	disp("")
 )$
 
+
+
+
 noundisp:true$
 
 declare (FT, linear)$
 declare (IFT, linear)$
+declare_distributes_over (FT, ["[","="])$
+declare_distributes_over (IFT, ["[","="])$
 
 ( "transitive rules",
 matchdeclare(seq, opEqp),
@@ -208,13 +217,7 @@ ft(expr,t,f):= block([ ret, p1, p2, fr:1 ],
 	ret:FT(ret), 
     assume(f>0),  
     if opIftp(expr) then return (apply1 (ret,  ft_ift)),   
-    if opEqp(ret) then (
-        p1:part(ret,1),
-        p1:apply1(p1, ft_ift),
-        p2:part(ret,2),
-        p2:apply1(p2, ft_ift),
-        ret:p1=p2
-    ),
+ 
 	"print (ret)",
 	ret: apply1(ret, simpftlin, simftc, simftshift, simftscale),
 	if listp(ret) then (
@@ -241,13 +244,7 @@ ift(expr,f,t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
        ret: apply1 (ret,  ift_ft),
        return (ret)
     ),   
-    if opEqp(ret) then (
-        p1:part(ret,1),
-        p1:apply1(p1, ift_ft),
-        p2:part(ret,2),
-        p2:apply1(p2, ift_ft),
-        ret:p1=p2
-    ),
+ 
 	ret: apply1(ret, simpiftlin, simiftc, simiftshift, simiftscale),
 	if listp(ret) then (
 		print ("sc ", ret),
@@ -297,6 +294,7 @@ _sinc(t, T):= block(
 *****************************/
 
 
+put('fourrier, 1.1,'version)$
 
 /*******************************
 *         Utility functions
@@ -310,15 +308,7 @@ splitBy1(V, t):= block([A:false],
     return(A)
 )$
 
-/*
-splitByN(V, t):= block([A:false],
-    matchdeclare (A, true, t, atom),
-    defmatch (prodp,  A*t, t),
-    prodp(V,t),  
-    if not freeof(t, A) then return (false),
-    return(A)
-)$
-*/
+
 /* utility like args, but avoids / or - */
 inargsa(z):=block( 
 if (atom(z)) then return ([z])
