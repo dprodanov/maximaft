@@ -1,0 +1,65 @@
+
+put('utils, 1.0,'version)$
+
+/*******************************
+*         Utility functions
+****************************/  
+/*
+cmult(la, lb):=block ([n, ret] ,
+    if nlistp (la) or nlistp (lb) then return (false),
+    n:length(la),  
+    if n#length(lb) then return(false),
+    ret: sum( la[i]*lb[i], i,1, n),
+    return (ret)
+)$
+*/
+
+/* 
+* splits the product V by t
+*/
+splitBy1(V, t):= block([ %A:false ],
+    matchdeclare (%A, atom, t, atom),
+    defmatch (prodp,  %A*t, t),
+    prodp(V,t),  
+    return(%A)
+)$
+
+splitByDiv1(V, t):= block([ %A, s ],
+    matchdeclare (%A, nlistp, t, atom),
+    defmatch (divp,  %A/t, t),
+    s: divp(V,t), 
+    if s#false then return(%A) else return (s)
+)$
+
+
+lfreeof2(exp, lst):=block([e, s:true ],    
+  for e in lst do s:s and freeof(e,exp),  
+  return(s)
+)$
+
+nlistp(_x):= not(listp(_x))$
+
+/* utility like args, but avoids / or - */
+inargsa(z):=block( 
+    if atom(z) then return ([z])
+    else return( substinpart("[",z,0))
+)$
+
+/* 
+* returns true if any of the arguments is true
+*/  
+any(blist):=block([ b:false ],
+    if atom(blist) then return (blist),
+    for bb in blist do b: b or bb,
+    return (b)
+)$
+
+isOp(V, oper):= block(
+    if atom(V) then return (false)
+    else return (is(op(V) = oper) or is(op(V) = nounify(oper)))
+)$
+
+opEqp(V):= isOp (V, "=")$
+opDp(V):= isOp (V, "/")$
+opMp(V):= isOp (V, "*")$
+/******* END ******************/
