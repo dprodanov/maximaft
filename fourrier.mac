@@ -171,6 +171,8 @@ matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constan
 	),
 	
 	iftsumsimp(V, s, t):=block( [ %A, p1, p2, res],
+		matchdeclare(%A, lambda([x], freeof(s, x) ), s, atom),
+		defmatch (osump,  %A + s, s),
 		p2:op(V),
 		p1:first(inargsa(V)),
 		res: osump(p1, s),
@@ -210,10 +212,12 @@ matchdeclare(x, opMp, t, atom, g, symbolp ),
 
 	defrule (simftsinmod, FT (g(t)*sin(x)), ftmodsim1 (g(t), sin(x), t )),
 	defrule (simftsinmod1, FT (t*sin(x)), ftmodsim1 (t, sin(x), t )),
-	ftmodsim1(V, fn, s):=opmodsimp(V, fn, s, FT)
+	ftmodsim1(V, fn, s):=opmodsimp(V, fn, s, FT) 
 )$
 
 opmodsimp(V, fn, s, OP ):= block( [ %B, res, v:op(fn) ],
+	matchdeclare( %B , lambda([x], freeof(s, x) ), s, atom, g, symbolp),
+	defmatch (oprod2p,  g(%B*s), s),
 	res: oprod2p(fn, s),	
 	if (res#false) then (
 		"print (%B)",
@@ -221,13 +225,14 @@ opmodsimp(V, fn, s, OP ):= block( [ %B, res, v:op(fn) ],
 	)		
 	else return (OP(V*fn)) 	
 )$
-
+ 
 ( "modulation by exp ",
-matchdeclare( [t, f], true, V, lambda([u], not atom(u)), it, complexp ),
-	defrule (simftexpmod, FT (V*exp(it)), ftmodsim2 (V, exp(it), t )),
-	defrule (simftexpmod, IFT (V*exp(it)), iftmodsim2 (V, exp(it), f )),
+matchdeclare( [t, f], atom, V, lambda([u], not atom(u)), it, complexp ),
+	defrule (simftexpmod, FT (V*exp(it)), ftmodsim3 (V, exp(it), t )),
+	defrule (simftexpmod1, FT (t*exp(it)), ftmodsim3 (t, exp(it), t )),
+	defrule (simiftexpmod, IFT (V*exp(it)), iftmodsim2 (V, exp(it), f )),
 	
-	ftmodsim2(V, fn, s):=opmodsimp2(V, fn, s, FT),
+	ftmodsim3(V, fn, s):=opmodsimp2(V, fn, s, FT),
 	iftmodsim2(V, fn, s):=opmodsimp2(V, fn, s, IFT),
 	
 	opmodsimp2(V, fn, s, OP ):= block( [ %B, res ],
@@ -245,18 +250,16 @@ matchdeclare( [t, f], true, V, lambda([u], not atom(u)), it, complexp ),
 complexp (u) := not atom(u) and not listp(u) and not freeof(%i, u)$
 
 
-
-
 /* assume FT rules are all named ftsomething.we construct automatic specific function lists
  */
 specific_FT_rules : sublist (rules, lambda ([a], smismatch ("ft", sconcat (a)) = 3 and a # 'ft_main))$
 specific_IFT_rules : sublist (rules, lambda ([a], smismatch ("ift", sconcat (a)) = 4 and a # 'ift_main))$
 /* It is impotant to order the rules matching their logical order  */ 
-simp_FT_rules : [simftlin, simftc, simftshift, simftscale, simftcosmod, simftcosmod1, simftsinmod, simftsinmod1, simftexpmod] $
+simp_FT_rules : [simftlin, simftc, simftshift, simftscale, simftcosmod, simftcosmod1, simftsinmod, simftsinmod1, simftexpmod, simftexpmod1] $
 simp_IFT_rules : [simiftlin, simiftc, simiftshift, simiftscale] $
 
 /* Forward  Fourier trnsform main function*/
-ft(expr,t,f):= block([ ret, p1, p2, fr:1, smod:[] ],
+ft(expr, t, f):= block([ ret, p1, p2, fr:1, smod:[] ],
 	ret:expand(expr),
 	ret:FT(ret), 
      
@@ -292,7 +295,7 @@ ft(expr,t,f):= block([ ret, p1, p2, fr:1, smod:[] ],
 			ret: 1/2*(p1+p2)
 		),
 		if smod[2]=exp then (
-			ret:subst(f-smod[1]/(2*%pi), f, ret)
+			ret:subst(f-smod[1]/(2*%pi*%i), f, ret)
 		)
 	),	
 	"ret:apply1 (ret, expand_rect, expand_step)",
@@ -302,7 +305,7 @@ ft(expr,t,f):= block([ ret, p1, p2, fr:1, smod:[] ],
 )$
 
 /* Inverse  Fourier trnsform  main function*/
-ift(expr,f,t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
+ift(expr, f, t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
     if opFtp(expr) then  
        return (apply1 (ret,  ift_ft)),
 	
