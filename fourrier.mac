@@ -28,6 +28,7 @@
  if get('fourrier,'version)=false then ( 
 	load("dist.lisp"),
 	if get('utils,'version)=false then load("util.mac")
+	
  )$
  
 fourinfo([_package]):=
