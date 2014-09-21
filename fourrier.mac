@@ -1,19 +1,22 @@
 /*
  * (C) Dimiter Prodanov
  *
- * @version 1.0 Date 06 April 2014
+ * @version 	1.3.1 Date 22 Sept 2014
+			1.3 Date 27 April 2014
+			1.0 Date 06 April 2014
  *
  * @author Dimiter Prodanov
  * 		  IMEC
 
  * @contents
- * This package computes Fourier transforms
-
+ * This package computes Fourier transforms. 
  * main functions:
 	ft(expr, t,f)
 	ift(expr, f,t)
 	simplification switch: expandft
 	special functions: unit (t), sinc(t,T), rect(t,T), triang(t,T)
+	auxilliaries: ev_ft(expr)
+	
  *  I thank also Robert Dodier for  the rule handling code 
  *  and the code handling distributive properties of FT and IFT.
  * 
@@ -44,7 +47,7 @@ block(
 	disp("major version: 1"),
 	disp("minor version: 3"),
 	disp("Recommended location: share/contrib"),
-	disp("last update: 27 Apr, 2014"),
+	disp("last update: 22 Sept, 2014"),
 	disp("")
 )$
 
@@ -57,7 +60,7 @@ expandft:true$
 declare (FT, linear)$
 declare (IFT, linear)$
 declare_distributes_over (FT, ["[","="])$
-declare_distributes_over (IFT, ["[","="])$
+declare_distributes_over (IFT, ["[","=", "'sum"])$
 
 ( "Basic FT IFT  rules",
 matchdeclare([ t, f ], atom, x, true),
@@ -182,7 +185,7 @@ matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constan
 		p1:first(inargsa(V)),
 		res: osump(p1, s),
 		if (res#false) then
-			return (FT(p2(s))*exp( 2*%pi*f*%A))
+			return (FT(p2(s))*exp( 2*%pi*%i*f*%A))
 		else return (FT(V))
 	),
 	
@@ -193,7 +196,7 @@ matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constan
 		p1:first(inargsa(V)),
 		res: osump(p1, s),
 		if (res#false) then
-			return (IFT(p2(s))*exp(- 2*%pi*t*%A))
+			return (IFT(p2(s))*exp(- 2*%pi*t*%i*%A))
 		else return (IFT(V))
 	)
 )$
@@ -214,14 +217,17 @@ matchdeclare(V, opMp, [t, g], symbolp),
 		
 		if (res#false) then (
 			res:subst (s/%B, s, y),
-			"print (%B)",
+			"print (%B, res)",
 			return ([OP(res), %B])
 		)		
 		else return (OP(V)) 	
 	)
 )$
 
-
+( matchdeclare( fr, true, xi, true, [a,b], atom, k, true ),
+	defrule (simftsum1, FT('sum(xi[k]*fr, k, a, b)),  sum(FT(xi[k]*fr), k, a, b)),
+	defrule (simiftsum1, IFT('sum(xi[k]*fr, k, a, b)),  sum(IFT(xi[k]*fr), k, a, b))
+)$
 
 ( "modulation by sin and cos ",
 matchdeclare(x, opMp, t, atom, g, symbolp ),
@@ -274,22 +280,26 @@ complexp (u) := not atom(u) and not listp(u) and not freeof(%i, u)$
 specific_FT_rules : sublist (rules, lambda ([a], smismatch ("ft", sconcat (a)) = 3 and a # 'ft_main))$
 specific_IFT_rules : sublist (rules, lambda ([a], smismatch ("ift", sconcat (a)) = 4 and a # 'ift_main))$
 /* It is impotant to order the rules matching their logical order  */ 
-simp_FT_rules : [simftlin, simftlin2,  simftc, simftshift, simftscale, simftcosmod, simftcosmod1, simftsinmod, simftsinmod1, simftexpmod, simftexpmod1] $
-simp_IFT_rules : [simiftlin, simiftlin2, simiftc, simiftshift, simiftscale] $
+simp_FT_rules : [ simftlin, simftlin2,  simftc, simftshift, simftscale, simftsum1, simftcosmod, simftcosmod1, simftsinmod, simftsinmod1, simftexpmod, simftexpmod1] $
+simp_IFT_rules : [ simiftlin, simiftlin2, simiftc, simiftshift, simiftscale, simiftsum1] $
 
 /* Forward  Fourier trnsform main function*/
-ft(expr, t, f):= block([ ret, p1, p2, fr:1, smod:[] ],
+ft(expr, t, f):= block([ ret, p1, p2, fr:1, fr1:1, smod:[] ],
+	if opIftp(expr) then return (apply1 (ret,  ft_ift)), 
+
 	ret:expand(expr),
-	ret:FT(ret), 
-     
-    if opIftp(expr) then return (apply1 (ret,  ft_ift)),   
+	if freeof (FT, ret) then ret:FT(ret), 
  
 	"print (ret)",
 	ret: apply (apply1, cons ('ret, simp_FT_rules)), 
 	if listp(ret) then (
 		if length(ret)>2 then smod: third(ret),
-		print ("sc ", ret),
+		fr1: parse_factor(first(ret), t),
+		print ("sc: ", ret, fr1),
 		fr:second(ret),
+		if fr1#false then
+			fr:fr/fr1,
+			
 		ret: first(ret)		
 	),
 	ret:apply (apply1, cons ('ret, specific_FT_rules)),
@@ -324,15 +334,21 @@ ft(expr, t, f):= block([ ret, p1, p2, fr:1, smod:[] ],
 	return (ret)
 )$
 
+
+
 /* Inverse  Fourier trnsform  main function*/
-ift(expr, f, t):= block([ ret:IFT(expr), p1, p2, fr:1 ],
+ift(expr, f, t):= block([ ret:IFT(expr), p1, p2, fr:1, fr1:1 ],
     if opFtp(expr) then  
        return (apply1 (ret,  ift_ft)),
+	if freeof (IFT, ret) then ret:IFT(ret), 
 	
 	ret: apply (apply1, cons ('ret, simp_IFT_rules)), 
 	if listp(ret) then (
-		print ("sc ", ret),
+		fr1: parse_factor(first(ret), t),
+		print ("sc: ", ret, fr1),
 		fr:second(ret),
+		if fr1#false then
+			fr:fr/fr1,
 		ret: first(ret)
 	),
     ret:apply (apply1, cons ('ret, specific_IFT_rules)),
@@ -383,8 +399,8 @@ _step(t):=  (if t>=0 then  1 else 0)$
 
 /*sinc(t,T):=funmake (_sinc, [t ,T] )$*/
 _sinc(t, T):= (
-    if t#0 then  (sin(t*T*%pi)/(t*T*%pi))
-    else  (1)
+    if equal(t,0) then 1
+    else  sin(t*T*%pi)/(t*T*%pi)
 )$
 
  
@@ -393,9 +409,13 @@ put('fourrier, 1.3,'version)$
 /*****************************
 *         Private functions
 *****************************/
-oprodsimp(V, s, OP ):= block( [ %A, %R, res ],
+( "product and ratio matching",
 	matchdeclare(%A, lambda([x], freeof(s, x)), %R, lambda([x], not freeof(s, x)), s, true),
 	defmatch (oprodp,  %A*%R, s),
+	defmatch (oratp,  %R/%A, s)
+)$
+
+oprodsimp(V, s, OP ):= block( [ %A, %R, res ],
 	res: oprodp(V, s),
 	if (res#false) then
 		return (%A*OP(%R))
@@ -403,12 +423,23 @@ oprodsimp(V, s, OP ):= block( [ %A, %R, res ],
 )$
 
 oratsimp(V, s, OP ):= block( [ %A, %R, res ],
-	matchdeclare(%A, lambda([x], freeof(s, x)), %R, lambda([x], not freeof(s, x)), s, true),
-	defmatch (oratp,  %R/%A, s),
 	res: oratp(V, s),
 	if (res#false) then
 		return (OP(%R)/%A)
 	else return (OP(V))
+)$
+
+parse_factor(V, s):=block ( [ res, %A, %R ],  
+  res: oprodp(V, s),
+  if (res#false) then (
+		return (%A)
+  )
+  else (
+	res: oratp(V, s),
+	if (res#false) then (
+		return (%A)
+	)
+  )
 )$
 
 opFtp(V):= isOp (V, FT)$

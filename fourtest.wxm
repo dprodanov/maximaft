@@ -1,0 +1,226 @@
+/* [wxMaxima batch file version 1] [ DO NOT EDIT BY HAND! ]*/
+/* [ Created with wxMaxima version 13.04.2 ] */
+
+/* [wxMaxima: input   start ] */
+kill(all);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+load("C:/Documents and Settings/adminprodanov/My Documents/maxima/fourrier.mac")$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(delta(t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(triang(t,T),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+g2(f, T):=ft(rect(t,T),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+plot2d([g2(f,1)], [f,-5,5],
+ [plot_format, gnuplot])$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(cos(t^2),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(signum(t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(sinc(t,T)^2,t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_sinc2(FT(sinc(t,T)^2));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(exp(%i*t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_cos( FT(cos(t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_sin( FT(sin(t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_diff1(FT( diff(g(t),t,1)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_scale(FT(g(b*t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+splitBy1(b*f(t),f(t));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+zz:ft_scale ( FT( F(a*t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+zz;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+zz(b*t);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+splitBy2(t^n * g(t), t, 2);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+s:inargsa(g(t)*(t^n ));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+s[2];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+s:inargsa(s[1]);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+splitBy1(t^n * g(t), t);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+k:s[2];
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_diff2( FT( (t^n )* g(t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+zz1:ft_diff2 ( FT( (t^n )* g(t)) );
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+zz1(t^2 * F(t));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ry:ft(cos(t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft('diff(sin(t),t,1),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft( cos(t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft( sin(t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft('diff(cos(t),t,1),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_diff1( FT('diff(h(t), t,n)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft_diff2( FT(t^n*f(t)));
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ftscale(a*t,G);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ry(f):=delta(f+1/(2*%pi))/2+delta(f-1/(2*%pi))/2;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(cos(k*t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft(sin(k*t),t,f);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+kill(k);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+("shifting",
+matchdeclare(V, lambda([x], not freeof(t, x)) , [t, f ], lambda([u], not(constantp(u)) and symbolp(u)), fn, symbolp),
+	defrule (simftshift, FT(fn(V)), ftsumsimp(fn(V), t, f)),
+	defrule (simiftshift, IFT(fn(V)), iftsumsimp(fn(V), f, t)),
+	
+	ftsumsimp(V, s, f):=block( [ %A, p1, p2, res],
+		matchdeclare(%A, lambda([x], freeof(s, x) ), s, atom),
+		defmatch (osump,  %A + s, s),
+		p2:op(V),
+		p1:first(inargsa(V)),
+		res: osump(p1, s),
+		if (res#false) then
+			return (FT(p2(s))*exp( 2*%pi*%i*f*%A))
+		else return (FT(V))
+	),
+	
+	iftsumsimp(V, s, t):=block( [ %A, p1, p2, res],
+		matchdeclare(%A, lambda([x], freeof(s, x) ), s, atom),
+		defmatch (osump,  %A + s, s),
+		p2:op(V),
+		p1:first(inargsa(V)),
+		res: osump(p1, s),
+		if (res#false) then
+			return (IFT(p2(s))*exp(- 2*%pi*t*%i*%A))
+		else return (IFT(V))
+	)
+)$
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft((f(t+h)-f(t)),t,f)/h^alpha;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+factor(%);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft((f(t+h)-f(t)),t,f)/h^alpha;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+factor(%);
+/* [wxMaxima: input   end   ] */
+
+
+/* [wxMaxima: input   start ] */
+taylor( (%e^(%i*%pi*f*h)-1)*(%e^(%i*%pi*f*h)+1), f, 0, 2)/h^alpha;
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+expand(%);
+/* [wxMaxima: input   end   ] */
+
+/* [wxMaxima: input   start ] */
+ft((diff(f(t),t)),t,f)/h^alpha;
+/* [wxMaxima: input   end   ] */
+
+
+/* Maxima can't load/batch files which end with a comment! */
+"Created with wxMaxima"$
